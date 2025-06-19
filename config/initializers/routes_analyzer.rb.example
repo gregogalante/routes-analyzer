@@ -1,0 +1,16 @@
+# Example configuration for Routes Analyzer
+# Copy this file to config/initializers/routes_analyzer.rb in your Rails application
+
+Routes::Analyzer.configure do |config|
+  # Redis connection URL
+  # You can use environment variables to keep this secure
+  config.redis_url = ENV['REDIS_URL'] || 'redis://localhost:6379/0'
+  
+  # Redis key prefix for storing route usage data
+  # This helps avoid conflicts with other Redis data
+  config.redis_key_prefix = 'routes_analyzer'
+  
+  # Timeframe for route usage analysis in days
+  # Only routes accessed within this timeframe will be considered "active"
+  config.timeframe = 30
+end
