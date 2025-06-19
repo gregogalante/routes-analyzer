@@ -111,12 +111,26 @@ Displays current configuration and tests Redis connectivity.
 ## How It Works
 
 1. **Middleware Integration**: The plugin automatically adds middleware to your Rails application
-2. **Request Tracking**: Each HTTP request is analyzed to extract route information
-3. **Redis Storage**: Usage data is stored in Redis with the following structure:
+2. **Route Filtering**: Only routes explicitly defined in `routes.rb` are tracked. This ensures that:
+   - Undefined routes (404 errors) are not tracked
+   - Catch-all routes that handle unknown paths don't pollute the data
+   - Only legitimate application routes are analyzed
+3. **Request Tracking**: Each valid HTTP request is analyzed to extract route information
+4. **Redis Storage**: Usage data is stored in Redis with the following structure:
    - Route path and HTTP method
    - Access count within the timeframe
    - Last access timestamp
-4. **Data Expiration**: Redis keys automatically expire after the configured timeframe plus a buffer period
+5. **Data Expiration**: Redis keys automatically expire after the configured timeframe plus a buffer period
+
+## Route Detection
+
+The middleware uses Rails' routing system to determine if a route is valid:
+
+- **Path Parameters Check**: Verifies that Rails recognized the route and set path parameters
+- **Route Recognition**: Uses `Rails.application.routes.recognize_path` to confirm the route exists in `routes.rb`
+- **Error Handling**: Gracefully handles routing errors and invalid requests without tracking them
+
+This approach ensures that only routes you've intentionally defined are included in the usage analysis.
 
 ## Data Structure
 

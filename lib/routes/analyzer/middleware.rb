@@ -23,6 +23,9 @@ module Routes
         return false unless Routes::Analyzer.track_usage?
         return false unless env["action_controller.instance"]
 
+        # Check if the route is actually defined in routes.rb
+        return false unless route_defined_in_rails?(env)
+
         true
       rescue => e
         Rails.logger.warn "Routes::Analyzer: Failed to check tracking conditions: #{e.message}"
@@ -55,6 +58,32 @@ module Routes
 
       rescue => e
         Rails.logger.warn "Routes::Analyzer: Failed to track route usage: #{e.message}"
+      end
+
+      def route_defined_in_rails?(env)
+        request = Rack::Request.new(env)
+
+        # First check: if Rails didn't set path_parameters, it means the route wasn't recognized
+        # This happens when Rails can't match the request to any defined route
+        path_params = env["action_dispatch.request.path_parameters"]
+        return false unless path_params
+
+        # Second check: verify that Rails can recognize this path/method combination
+        # This ensures the route is actually defined in routes.rb and not just handled by a catch-all
+        route_exists = Rails.application.routes.recognize_path(
+          request.path_info,
+          method: request.request_method.downcase.to_sym
+        )
+
+        return true if route_exists
+        false
+      rescue ActionController::RoutingError, NoMethodError
+        # If recognize_path raises RoutingError, the route is not defined in routes.rb
+        # NoMethodError can occur if the controller/action doesn't exist
+        false
+      rescue => e
+        Rails.logger.warn "Routes::Analyzer: Error checking route definition: #{e.message}"
+        false
       end
 
       def extract_route_info(env, request)
