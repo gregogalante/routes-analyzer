@@ -1,5 +1,7 @@
 # Routes::Analyzer
 
+[![Gem Version](https://badge.fury.io/rb/routes-analyzer.svg)](https://badge.fury.io/rb/routes-analyzer)
+
 A Ruby on Rails plugin that tracks and analyzes route usage in your application. It uses Redis to store route access patterns and provides insights into which routes are being used and which are not.
 
 ## Features
