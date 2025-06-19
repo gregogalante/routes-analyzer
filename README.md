@@ -142,6 +142,30 @@ For each tracked route, the following data is stored in Redis:
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a Pull Request
 
+## Testing
+
+Run the test suite to ensure everything is working correctly:
+
+```bash
+ruby bin/test
+```
+
+## Rubocop check
+
+Run Rubocop to check code style:
+
+```bash
+ruby bin/rubocop
+```
+
+## Publishing
+
+To publish a new version of the gem, update the version number in `lib/routes/analyzer/version.rb` and run:
+
+```bash
+ruby bin/publish
+```
+
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
