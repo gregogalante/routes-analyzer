@@ -1,60 +1,59 @@
 namespace :routes do
   namespace :analyzer do
-    desc "Show routes usage statistics"
+    desc "Show controller action usage statistics"
     task usage: :environment do
       begin
         config = Routes::Analyzer.configuration
         tracker = Routes::Analyzer::RouteUsageTracker.new(config)
 
-        puts "Routes Usage Analysis (#{config.timeframe} days)"
+        puts "Controller Action Usage Analysis (#{config.timeframe} days)"
         puts "=" * 80
         puts
 
         if config.valid?
           usage_stats = tracker.get_usage_stats
-          merged_routes = tracker.merge_with_defined_routes(usage_stats)
+          merged_actions = tracker.merge_with_defined_actions(usage_stats)
         else
-          puts "Warning: Redis not configured. Showing defined routes only."
+          puts "Warning: Redis not configured. Showing defined actions only."
           puts
-          merged_routes = tracker.get_all_defined_routes.map do |route|
-            route.merge(count: 0, last_accessed: nil)
+          merged_actions = tracker.get_all_defined_actions.map do |action|
+            action.merge(count: 0, last_accessed: nil)
           end
         end
 
-        if merged_routes.empty?
-          puts "No routes found."
+        if merged_actions.empty?
+          puts "No controller actions found."
           next
         end
 
         # Print header
-        printf "%-8s %-40s %-15s %-20s %s\n", "COUNT", "ROUTE", "METHOD", "CONTROLLER#ACTION", "LAST ACCESSED"
+        printf "%-8s %-40s %-15s %s\n", "COUNT", "CONTROLLER#ACTION", "METHOD", "LAST ACCESSED"
         puts "-" * 80
 
-        merged_routes.each do |route|
-          controller_action = if route[:controller] && route[:action]
-            "#{route[:controller]}##{route[:action]}"
+        merged_actions.each do |action|
+          controller_action = if action[:controller] && action[:action]
+            "#{action[:controller]}##{action[:action]}"
           else
             "N/A"
           end
 
-          last_accessed = if route[:last_accessed]
-            route[:last_accessed].strftime("%Y-%m-%d %H:%M")
+          last_accessed = if action[:last_accessed]
+            action[:last_accessed].strftime("%Y-%m-%d %H:%M")
           else
             "Never"
           end
 
-          printf "%-8d %-40s %-15s %-20s %s\n",
-                 route[:count],
-                 route[:route].to_s[0, 40],
-                 route[:method],
-                 controller_action[0, 20],
+          printf "%-8d %-40s %-15s %s\n",
+                 action[:count],
+                 controller_action[0, 40],
+                 action[:method],
                  last_accessed
         end
 
         puts
-        puts "Total routes: #{merged_routes.count}"
-        puts "Used routes: #{merged_routes.count { |r| r[:count] > 0 }}"
-        puts "Unused routes: #{merged_routes.count { |r| r[:count] == 0 }}"
+        puts "Total actions: #{merged_actions.count}"
+        puts "Used actions: #{merged_actions.count { |a| a[:count] > 0 }}"
+        puts "Unused actions: #{merged_actions.count { |a| a[:count] == 0 }}"
 
       rescue => e
         puts "Error: #{e.message}"
@@ -69,7 +68,7 @@ namespace :routes do
       end
     end
 
-    desc "Clear all routes usage data"
+    desc "Clear all controller action usage data"
     task clear: :environment do
       begin
         config = Routes::Analyzer.configuration
@@ -79,9 +78,9 @@ namespace :routes do
 
         if keys.any?
           redis.del(*keys)
-          puts "Cleared #{keys.count} route usage records."
+          puts "Cleared #{keys.count} controller action usage records."
         else
-          puts "No route usage data found to clear."
+          puts "No controller action usage data found to clear."
         end
 
       rescue => e

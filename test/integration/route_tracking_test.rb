@@ -42,7 +42,7 @@ class RouteTrackingTest < ActionDispatch::IntegrationTest
     assert true
   end
 
-  test "tracks parameterized routes using route patterns" do
+  test "tracks controller actions instead of route patterns" do
     # Skip if Redis isn't available for testing
     skip "Redis not available for testing" unless redis_available?
 
@@ -60,7 +60,7 @@ class RouteTrackingTest < ActionDispatch::IntegrationTest
       skip "Redis not available: #{e.message}"
     end
 
-    # Test accessing different user IDs - should all track under /users/:id pattern
+    # Test accessing different user IDs - should all track under users#show action
     get "/users/123"
     assert_response :success
 
@@ -78,26 +78,28 @@ class RouteTrackingTest < ActionDispatch::IntegrationTest
     pattern = "#{Routes::Analyzer.configuration.redis_key_prefix}:*"
     keys = redis.keys(pattern)
 
-    # Find keys that match the users show pattern
+    # Find keys that match the users#show action
     user_show_keys = keys.select do |key|
       route_data = redis.hgetall(key)
-      route_data["route"] == "/users/:id" && route_data["method"] == "GET"
+      route_data["controller"] == "users" && route_data["action"] == "show"
     end
 
-    assert_equal 1, user_show_keys.length, "Should have only one key for /users/:id pattern"
+    assert_equal 1, user_show_keys.length, "Should have only one key for users#show action"
 
     # The count should be 3 (one for each request)
     if user_show_keys.any?
       key = user_show_keys.first
       count = redis.hget(key, "count").to_i
-      assert_equal 3, count, "Should have tracked 3 accesses to the same route pattern"
+      assert_equal 3, count, "Should have tracked 3 accesses to the same controller#action"
 
-      route = redis.hget(key, "route")
-      assert_equal "/users/:id", route, "Should store the route pattern, not actual paths"
+      controller = redis.hget(key, "controller")
+      action = redis.hget(key, "action")
+      assert_equal "users", controller, "Should store the controller name"
+      assert_equal "show", action, "Should store the action name"
     end
   end
 
-  test "tracks different routes separately" do
+  test "tracks different controller actions separately" do
     # Skip if Redis isn't available for testing
     skip "Redis not available for testing" unless redis_available?
 
@@ -114,9 +116,9 @@ class RouteTrackingTest < ActionDispatch::IntegrationTest
       skip "Redis not available: #{e.message}"
     end
 
-    # Access different routes
+    # Access different controller actions
     get "/users"           # users#index
-    get "/users/123"       # users#show (parameterized)
+    get "/users/123"       # users#show
     get "/posts"           # posts#index
 
     # Give a small delay for async processing if needed
@@ -127,18 +129,18 @@ class RouteTrackingTest < ActionDispatch::IntegrationTest
     pattern = "#{Routes::Analyzer.configuration.redis_key_prefix}:*"
     keys = redis.keys(pattern)
 
-    # Get all route data
-    routes_data = keys.map do |key|
+    # Get all action data
+    actions_data = keys.map do |key|
       redis.hgetall(key)
     end
 
-    users_index_routes = routes_data.select { |r| r["route"] == "/users" && r["method"] == "GET" }
-    users_show_routes = routes_data.select { |r| r["route"] == "/users/:id" && r["method"] == "GET" }
-    posts_index_routes = routes_data.select { |r| r["route"] == "/posts" && r["method"] == "GET" }
+    users_index_actions = actions_data.select { |a| a["controller"] == "users" && a["action"] == "index" }
+    users_show_actions = actions_data.select { |a| a["controller"] == "users" && a["action"] == "show" }
+    posts_index_actions = actions_data.select { |a| a["controller"] == "posts" && a["action"] == "index" }
 
-    assert_equal 1, users_index_routes.length, "Should have one entry for users index"
-    assert_equal 1, users_show_routes.length, "Should have one entry for users show pattern"
-    assert_equal 1, posts_index_routes.length, "Should have one entry for posts index"
+    assert_equal 1, users_index_actions.length, "Should have one entry for users#index"
+    assert_equal 1, users_show_actions.length, "Should have one entry for users#show"
+    assert_equal 1, posts_index_actions.length, "Should have one entry for posts#index"
   end
 
   private

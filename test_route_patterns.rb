@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# Simple test script to verify route pattern tracking
+# Simple test script to verify controller#action tracking
 # This script manually tests the extract_route_info method
 
 require_relative 'lib/routes/analyzer'
@@ -12,7 +12,7 @@ middleware = Routes::Analyzer::Middleware.new(->(env) { [ 200, {}, [ "OK" ] ] })
 # Test cases
 test_cases = [
   {
-    name: "User show route with ID 123",
+    name: "User show action with ID 123",
     env: {
       "REQUEST_METHOD" => "GET",
       "PATH_INFO" => "/users/123",
@@ -24,10 +24,11 @@ test_cases = [
         controller: "users", action: "show", id: "123"
       }
     },
-    expected_route: "/users/:id"
+    expected_controller: "users",
+    expected_action: "show"
   },
   {
-    name: "User show route with ID 456",
+    name: "User show action with ID 456",
     env: {
       "REQUEST_METHOD" => "GET",
       "PATH_INFO" => "/users/456",
@@ -39,10 +40,11 @@ test_cases = [
         controller: "users", action: "show", id: "456"
       }
     },
-    expected_route: "/users/:id"
+    expected_controller: "users",
+    expected_action: "show"
   },
   {
-    name: "User profile route",
+    name: "User profile action",
     env: {
       "REQUEST_METHOD" => "GET",
       "PATH_INFO" => "/users/789/profile",
@@ -54,10 +56,11 @@ test_cases = [
         controller: "users", action: "profile", id: "789"
       }
     },
-    expected_route: "/users/:id/profile"
+    expected_controller: "users",
+    expected_action: "profile"
   },
   {
-    name: "Posts index route",
+    name: "Posts index action",
     env: {
       "REQUEST_METHOD" => "GET",
       "PATH_INFO" => "/posts",
@@ -69,11 +72,12 @@ test_cases = [
         controller: "posts", action: "index"
       }
     },
-    expected_route: "/posts"
+    expected_controller: "posts",
+    expected_action: "index"
   }
 ]
 
-puts "Testing route pattern extraction..."
+puts "Testing controller#action extraction..."
 puts "=" * 50
 
 test_cases.each do |test_case|
@@ -82,10 +86,10 @@ test_cases.each do |test_case|
 
   puts "\n#{test_case[:name]}:"
   puts "  Input path: #{test_case[:env]['PATH_INFO']}"
-  puts "  Expected pattern: #{test_case[:expected_route]}"
-  puts "  Actual pattern: #{route_info[:route]}"
+  puts "  Expected controller#action: #{test_case[:expected_controller]}##{test_case[:expected_action]}"
+  puts "  Actual controller#action: #{route_info[:controller]}##{route_info[:action]}"
 
-  if route_info[:route] == test_case[:expected_route]
+  if route_info[:controller] == test_case[:expected_controller] && route_info[:action] == test_case[:expected_action]
     puts "  ✅ PASS"
   else
     puts "  ❌ FAIL"

@@ -38,7 +38,7 @@ module Routes
 
         return unless route_info
 
-        redis_key = build_redis_key(route_info[:route], route_info[:method])
+        redis_key = build_redis_key(route_info[:controller], route_info[:action])
         current_time = Time.current
 
         configuration.redis_client.multi do |redis|
@@ -48,8 +48,9 @@ module Routes
           # Update last accessed timestamp
           redis.hset(redis_key, "last_accessed", current_time.to_i)
 
-          # Set route and method info (in case it's the first time)
-          redis.hset(redis_key, "route", route_info[:route])
+          # Set controller#action and method info (in case it's the first time)
+          redis.hset(redis_key, "controller", route_info[:controller])
+          redis.hset(redis_key, "action", route_info[:action])
           redis.hset(redis_key, "method", route_info[:method])
 
           # Set expiration based on timeframe (add some buffer)
@@ -94,17 +95,10 @@ module Routes
           controller_name = controller.controller_name
           method = request.request_method.upcase
 
-          # Find the route pattern instead of using the actual path
-          route_path = find_route_pattern(controller_name, action, method)
-
-          # Fallback to actual path if pattern not found
-          route_path ||= request.path_info
-
           {
-            route: route_path,
-            method: method,
             controller: controller_name,
-            action: action
+            action: action,
+            method: method
           }
         end
       rescue => e
@@ -112,25 +106,8 @@ module Routes
         nil
       end
 
-      def find_route_pattern(controller_name, action, method)
-        return nil unless defined?(Rails) && Rails.application
-
-        Rails.application.routes.routes.each do |route|
-          if route.defaults[:controller] == controller_name &&
-             route.defaults[:action] == action &&
-             route.verb == method
-            return route.path.spec.to_s.gsub(/\(\.:format\)$/, "")
-          end
-        end
-
-        nil
-      rescue => e
-        Rails.logger.warn "Routes::Analyzer: Failed to find route pattern: #{e.message}"
-        nil
-      end
-
-      def build_redis_key(route, method)
-        "#{configuration.redis_key_prefix}:#{method}:#{route.gsub('/', ':')}"
+      def build_redis_key(controller, action)
+        "#{configuration.redis_key_prefix}:#{controller}##{action}"
       end
 
       def configuration
