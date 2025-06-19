@@ -12,7 +12,7 @@ raise "Impossible to push gem" unless output
 output = system("rm -rf #{files.first}")
 raise "Impossible to delete gem" unless output
 
-version = files.first.gsub('routes-analyzer-', '').gsub('.gem', '')
+version = files.first.gsub("routes-analyzer-", "").gsub(".gem", "")
 system("git tag #{version}")
 system("git add -A")
 system("git commit -m \"Publish version #{version}\"")
