@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    routes-analyzer (0.1.1)
+    routes-analyzer (0.1.2)
       rails (>= 6.1.5)
       redis (>= 4.5.1)
 
