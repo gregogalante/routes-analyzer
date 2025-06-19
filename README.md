@@ -7,6 +7,7 @@ A Ruby on Rails plugin that tracks and analyzes route usage in your application.
 ## Features
 
 - **Route Usage Tracking**: Automatically tracks which routes are accessed and how often
+- **Smart Parameter Handling**: Routes with parameters (like `/users/:id`) are properly grouped under a single pattern instead of creating separate entries for each parameter value
 - **Redis Storage**: Uses Redis to store usage statistics efficiently  
 - **Configurable Timeframe**: Set custom analysis periods (default 30 days)
 - **Comprehensive Reporting**: Shows both used and unused routes
@@ -131,6 +132,27 @@ The middleware uses Rails' routing system to determine if a route is valid:
 - **Error Handling**: Gracefully handles routing errors and invalid requests without tracking them
 
 This approach ensures that only routes you've intentionally defined are included in the usage analysis.
+
+## Parameterized Route Handling
+
+The gem intelligently handles routes with parameters by tracking them under their route pattern rather than individual parameter values:
+
+- **Route Definition**: `/users/:id` in `routes.rb`
+- **Actual Requests**: `/users/123`, `/users/456`, `/users/789`
+- **Tracked As**: Single entry for `/users/:id` with combined statistics
+
+This means that accessing `/users/123` three times and `/users/456` two times will show up as 5 total accesses to the `/users/:id` route pattern, not as separate routes.
+
+**Example Output:**
+```
+COUNT    ROUTE                   METHOD    CONTROLLER#ACTION
+--------------------------------------------------------------
+15       /users/:id             GET       users#show
+8        /users/:id/profile     GET       users#profile
+23       /posts/:id             GET       posts#show
+```
+
+This grouping provides much more meaningful insights into which route patterns are being used in your application.
 
 ## Data Structure
 

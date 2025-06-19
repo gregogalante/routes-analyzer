@@ -92,19 +92,40 @@ module Routes
           controller = env["action_controller.instance"]
           action = controller.action_name
           controller_name = controller.controller_name
+          method = request.request_method.upcase
 
-          # Build route pattern from request path, removing query parameters
-          route_path = request.path_info
+          # Find the route pattern instead of using the actual path
+          route_path = find_route_pattern(controller_name, action, method)
+
+          # Fallback to actual path if pattern not found
+          route_path ||= request.path_info
 
           {
             route: route_path,
-            method: request.request_method.upcase,
+            method: method,
             controller: controller_name,
             action: action
           }
         end
       rescue => e
         Rails.logger.warn "Routes::Analyzer: Failed to extract route info: #{e.message}"
+        nil
+      end
+
+      def find_route_pattern(controller_name, action, method)
+        return nil unless defined?(Rails) && Rails.application
+
+        Rails.application.routes.routes.each do |route|
+          if route.defaults[:controller] == controller_name &&
+             route.defaults[:action] == action &&
+             route.verb == method
+            return route.path.spec.to_s.gsub(/\(\.:format\)$/, "")
+          end
+        end
+
+        nil
+      rescue => e
+        Rails.logger.warn "Routes::Analyzer: Failed to find route pattern: #{e.message}"
         nil
       end
 

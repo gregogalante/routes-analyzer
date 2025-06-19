@@ -85,10 +85,100 @@ class Routes::Analyzer::MiddlewareTest < ActiveSupport::TestCase
     assert_equal true, result
   end
 
+  test "extract_route_info should return route pattern not actual path" do
+    Routes::Analyzer.configure do |config|
+      config.redis_url = "redis://localhost:6379/0"
+    end
+
+    # Mock environment for a parameterized route like /users/123
+    env = {
+      "REQUEST_METHOD" => "GET",
+      "PATH_INFO" => "/users/123",
+      "action_controller.instance" => mock_controller_with_user_show,
+      "action_dispatch.request.path_parameters" => {
+        controller: "users",
+        action: "show",
+        id: "123"
+      }
+    }
+
+    request = Rack::Request.new(env)
+    route_info = @middleware.send(:extract_route_info, env, request)
+
+    # Should return the route pattern /users/:id, not the actual path /users/123
+    assert_equal "/users/:id", route_info[:route]
+    assert_equal "GET", route_info[:method]
+    assert_equal "users", route_info[:controller]
+    assert_equal "show", route_info[:action]
+  end
+
+  test "extract_route_info should handle member routes correctly" do
+    Routes::Analyzer.configure do |config|
+      config.redis_url = "redis://localhost:6379/0"
+    end
+
+    # Mock environment for a member route like /users/123/profile
+    env = {
+      "REQUEST_METHOD" => "GET",
+      "PATH_INFO" => "/users/456/profile",
+      "action_controller.instance" => mock_controller_with_user_profile,
+      "action_dispatch.request.path_parameters" => {
+        controller: "users",
+        action: "profile",
+        id: "456"
+      }
+    }
+
+    request = Rack::Request.new(env)
+    route_info = @middleware.send(:extract_route_info, env, request)
+
+    # Should return the route pattern /users/:id/profile, not the actual path /users/456/profile
+    assert_equal "/users/:id/profile", route_info[:route]
+    assert_equal "GET", route_info[:method]
+    assert_equal "users", route_info[:controller]
+    assert_equal "profile", route_info[:action]
+  end
+
+  test "extract_route_info should fallback to actual path for dynamic routes" do
+    Routes::Analyzer.configure do |config|
+      config.redis_url = "redis://localhost:6379/0"
+    end
+
+    # Mock environment for a dynamic route that doesn't exist in routes.rb
+    env = {
+      "REQUEST_METHOD" => "GET",
+      "PATH_INFO" => "/dynamic/path",
+      "action_controller.instance" => mock_controller_with_dynamic_action,
+      "action_dispatch.request.path_parameters" => {
+        controller: "dynamic",
+        action: "handler"
+      }
+    }
+
+    request = Rack::Request.new(env)
+    route_info = @middleware.send(:extract_route_info, env, request)
+
+    # Should fallback to actual path when route pattern is not found
+    assert_equal "/dynamic/path", route_info[:route]
+    assert_equal "GET", route_info[:method]
+  end
+
   private
 
   def mock_controller
     MockController.new
+  end
+
+  def mock_controller_with_user_show
+    MockUserController.new
+  end
+
+  def mock_controller_with_user_profile
+    MockUserProfileController.new
+  end
+
+  def mock_controller_with_dynamic_action
+    MockDynamicController.new
   end
 
   class MockController
@@ -98,6 +188,36 @@ class Routes::Analyzer::MiddlewareTest < ActiveSupport::TestCase
 
     def controller_name
       "test"
+    end
+  end
+
+  class MockUserController
+    def action_name
+      "show"
+    end
+
+    def controller_name
+      "users"
+    end
+  end
+
+  class MockUserProfileController
+    def action_name
+      "profile"
+    end
+
+    def controller_name
+      "users"
+    end
+  end
+
+  class MockDynamicController
+    def action_name
+      "handler"
+    end
+
+    def controller_name
+      "dynamic"
     end
   end
 end
