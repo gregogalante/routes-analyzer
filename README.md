@@ -171,8 +171,8 @@ For each tracked controller action, the following data is stored in Redis:
 
 ## Requirements
 
-- Ruby on Rails 8.0.2+
-- Redis 5.0+
+- Ruby on Rails
+- Redis
 
 ## Contributing
 
